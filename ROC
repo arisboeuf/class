@@ -1,0 +1,59 @@
+from sklearn.metrics import roc_curve, roc_auc_score
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+import pandas as pd
+from datetime import datetime
+import numpy as np
+
+# Daten aus der XLSX-Datei lesen, beginnend ab Zeile 2
+file_path = '1.xlsx'
+data = pd.read_excel(file_path, header=0, skiprows=[1], index_col=1)
+
+# Extrahieren der Zielvariablen (Y)
+y = data.iloc[:, 0].values
+
+# Extrahieren der unabhängigen Variablen (X)
+X = data.iloc[:, 1:]
+
+# Modell: logistische Regression für jede unabhängige Variable
+models = {}
+fprs = {}
+tprs = {}
+aucs = {}
+
+plt.figure(figsize=(8, 6))
+
+# Farbpalette zwischen Telemagenta und Enzianblau
+cmap = plt.get_cmap('winter')
+colors = [cmap(i) for i in np.linspace(0, 1, len(X.columns) - 1)]
+
+# Telemagenta für die erste Kurve und Enzianblau für die letzte Kurve
+colors.insert(0, 'magenta')
+colors.append('blue')
+
+for i, column in enumerate(X.columns):
+    model = LogisticRegression()
+    model.fit(X[column].values.reshape(-1, 1), y)
+    y_probs = model.predict_proba(X[column].values.reshape(-1, 1))[:, 1]
+    fpr, tpr, thresholds = roc_curve(y, y_probs)
+    roc_auc = roc_auc_score(y, y_probs)
+
+    models[column] = model
+    fprs[column] = fpr
+    tprs[column] = tpr
+    aucs[column] = roc_auc
+
+    plt.plot(fpr, tpr, lw=2, label=f'{column} (AUROC = {roc_auc:.2f})', color=colors[i], marker='o', markersize=4)
+
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', linewidth=1)
+
+plt.xlim([-0.05, 1.05])
+plt.ylim([-0.05, 1.05])
+
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curves')
+plt.legend(loc='lower right', fontsize='small')
+plt.grid(True, linestyle=':', alpha=0.6)
+
+plt.show()
